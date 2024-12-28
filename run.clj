@@ -10,7 +10,7 @@
   (let [numbers (quot (alength bytes) 2)
         buffer (.. (ByteBuffer/wrap bytes)
                    (order ByteOrder/LITTLE_ENDIAN))]
-    (map #(.getShort buffer (* % 2)) (range numbers))))
+    (map #(bit-and (.getShort buffer (* % 2)) 0xFFFF) (range numbers))))
 
 (defn read-binary-file
   [file-path]
