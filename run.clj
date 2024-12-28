@@ -22,12 +22,23 @@
 
 (def program (vec (read-binary-file "challenge.bin")))
 
+(def max-literal 32768)
+
+(defn get-arguments
+  [{:keys [registers pointer]} n]
+  (for [idx (range n)
+        :let [value (get program (+ (inc pointer) idx))]]
+    (if (>= value max-literal)
+      (get registers (- value max-literal))
+      value)))
+
 (defmulti instruction
   (fn [{:keys [pointer]}] (get program pointer)))
 
 (defmethod instruction 0
-  [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  [_state]
+  (flush)
+  (System/exit 0))
 
 (defmethod instruction 1
   [state]
@@ -50,17 +61,23 @@
   (throw (ex-info "UnsupportedOperationException" state)))
 
 (defmethod instruction 6
-  [{:keys [pointer] :as state}]
-  (let [a (get program (inc pointer))]
+  [state]
+  (let [[a] (get-arguments state 1)]
     (assoc state :pointer (int a))))
 
 (defmethod instruction 7
-  [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  [{:keys [pointer] :as state}]
+  (let [[a b] (get-arguments state 2)]
+    (if (zero? a)
+      (assoc state :pointer (+ pointer 3))
+      (assoc state :pointer (int b)))))
 
 (defmethod instruction 8
-  [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  [{:keys [pointer] :as state}]
+  (let [[a b] (get-arguments state 2)]
+    (if (zero? a)
+      (assoc state :pointer (int b))
+      (assoc state :pointer (+ pointer 3)))))
 
 (defmethod instruction 9
   [state]
@@ -104,7 +121,7 @@
 
 (defmethod instruction 19
   [{:keys [pointer] :as state}]
-  (let [a (get program (inc pointer))]
+  (let [[a] (get-arguments state 1)]
     (print (char a))
     (assoc state :pointer (+ pointer 2))))
 
@@ -126,7 +143,8 @@
 (defn -main
   []
   (try
-    (run 200 {:pointer 0})
+    (run 200 {:registers [0 0 0 0 0 0 0 0]
+              :pointer 0})
     (catch Exception e
       (let [{:keys [pointer] :as state} (ex-data e)]
         (println (ex-message e))
