@@ -1,9 +1,9 @@
-(ns core
-  (:require
-   [clojure.java.io :as io])
-  (:import
-   [java.io File]
-   [java.nio ByteBuffer ByteOrder]))
+#!/usr/bin/env bb
+
+(ns run
+  (:require [clojure.java.io :as io])
+  (:import [java.io File]
+           [java.nio ByteBuffer ByteOrder]))
 
 (defn ->shorts
   [bytes]
@@ -20,7 +20,7 @@
         (.read stream buffer)
         (->shorts buffer)))))
 
-(def program (vec (read-binary-file "resources/challenge.bin")))
+(def program (vec (read-binary-file "challenge.bin")))
 
 (defn halt
   [state]
