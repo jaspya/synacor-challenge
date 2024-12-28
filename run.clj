@@ -22,124 +22,113 @@
 
 (def program (vec (read-binary-file "challenge.bin")))
 
-(defn halt
+(defmulti instruction
+  (fn [{:keys [pointer]}] (get program pointer)))
+
+(defmethod instruction 0
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn set
+(defmethod instruction 1
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn push
+(defmethod instruction 2
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn pop
+(defmethod instruction 3
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn eq
+(defmethod instruction 4
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn gt
+(defmethod instruction 5
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn jmp
+(defmethod instruction 6
   [{:keys [pointer] :as state}]
   (let [a (get program (inc pointer))]
     (assoc state :pointer (int a))))
 
-(defn jt
+(defmethod instruction 7
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn jf
+(defmethod instruction 8
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn add
+(defmethod instruction 9
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn mult
+(defmethod instruction 10
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn mod
+(defmethod instruction 11
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn and
+(defmethod instruction 12
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn or
+(defmethod instruction 13
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn not
+(defmethod instruction 14
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn rmem
+(defmethod instruction 15
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn wmem
+(defmethod instruction 16
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn call
+(defmethod instruction 17
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn ret
+(defmethod instruction 18
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn out
+(defmethod instruction 19
   [{:keys [pointer] :as state}]
   (let [a (get program (inc pointer))]
     (print (char a))
     (assoc state :pointer (+ pointer 2))))
 
-(defn in
+(defmethod instruction 20
   [state]
   (throw (ex-info "UnsupportedOperationException" state)))
 
-(defn noop
+(defmethod instruction 21
   [state]
   (update state :pointer inc))
-
-(def get-instruction
-  {6 jmp
-   7 jt
-   19 out
-   21 noop})
-
-(defn initial-state
-  []
-  {:pointer 0})
-
-(defn process-instruction
-  [{:keys [pointer] :as state}]
-  ((get-instruction (get program pointer)) state))
 
 (defn run
   [max initial-state]
   (loop [idx 0
          state initial-state]
     (when (< idx max)
-      (recur (inc idx) (process-instruction state)))))
+      (recur (inc idx) (instruction state)))))
 
 (defn -main
   []
   (try
-    (run 200 (initial-state))
+    (run 200 {:pointer 0})
     (catch Exception e
-      (let [{:keys [pointer] :as state} (ex-data e)]\
+      (let [{:keys [pointer] :as state} (ex-data e)]
         (println (ex-message e))
         (println (pr-str {:opcode (get program pointer)
                           :range (subvec program (dec pointer) (+ pointer 5))
