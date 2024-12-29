@@ -20,14 +20,14 @@
         (.read stream buffer)
         (->shorts buffer)))))
 
-(def program (vec (read-binary-file "challenge.bin")))
+(defonce program (atom (vec (read-binary-file "challenge.bin"))))
 
 (def max-literal 32768)
 
 (defn add-arguments
   [state n]
   (reduce (fn [{:keys [registers pointer] :as state} _idx]
-            (let [raw-value (get program pointer)
+            (let [raw-value (get @program pointer)
                   register? (>= raw-value max-literal)
                   reg (when register? (- raw-value max-literal))
                   argv (if register? (get registers reg) raw-value)]
@@ -41,13 +41,17 @@
               (update :pointer inc))
           (range n)))
 
+(defn halt
+  []
+  (flush)
+  (System/exit 0))
+
 (defmulti instruction
-  (fn [{:keys [pointer]}] (get program pointer)))
+  (fn [{:keys [pointer]}] (get @program pointer)))
 
 (defmethod instruction 0
   [_state]
-  (flush)
-  (System/exit 0))
+  (halt))
 
 (defmethod instruction 1
   [state]
@@ -62,6 +66,8 @@
 (defmethod instruction 3
   [state]
   (let [{[a] :reg stack :stack :as state} (add-arguments state 1)]
+    (when (empty? stack)
+      (throw (ex-info "EmptyStackException" state)))
     (-> state
         (assoc-in [:registers a] (peek stack))
         (update :stack pop))))
@@ -73,7 +79,8 @@
 
 (defmethod instruction 5
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (if (> b c) 1 0))))
 
 (defmethod instruction 6
   [state]
@@ -99,44 +106,61 @@
 
 (defmethod instruction 10
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (mod (* b c) 32768))))
 
 (defmethod instruction 11
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (rem b c))))
 
 (defmethod instruction 12
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (bit-and b c))))
 
 (defmethod instruction 13
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (bit-or b c))))
 
 (defmethod instruction 14
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b] :argv :as state} (add-arguments state 2)]
+    (assoc-in state [:registers a] (bit-and-not (dec max-literal) b))))
 
 (defmethod instruction 15
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b] :argv :as state} (add-arguments state 2)]
+    (assoc-in state [:registers a] (get @program b))))
 
 (defmethod instruction 16
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a b] :argv :as state} (add-arguments state 2)]
+    (swap! program assoc a b)
+    state))
 
 (defmethod instruction 17
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :argv pointer :pointer :as state} (add-arguments state 1)]
+    (-> state 
+        (update :stack conj pointer)
+        (assoc :pointer a))))
 
 (defmethod instruction 18
-  [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  [{:keys [stack] :as state}]
+  (if (empty? stack)
+    (halt)
+    (-> state
+        (assoc :pointer (peek stack))
+        (update :stack pop))))
 
 (defmethod instruction 19
   [state]
-  (let [{[a] :argv :as state} (add-arguments state 1)]
-    (print (char a))
+  (let [{[a] :argv :as state} (add-arguments state 1)
+        c (char a)]
+    (print c)
+    (when (= c \newline) (flush))
     state))
 
 (defmethod instruction 20
@@ -148,23 +172,21 @@
   (update state :pointer inc))
 
 (defn run
-  [max initial-state]
-  (loop [idx 0
-         state initial-state]
-    (when (< idx max)
-      (recur (inc idx) (instruction state)))))
+  [initial-state]
+  (loop [state initial-state]
+    (recur (instruction state))))
 
 (defn -main
   []
   (try
-    (run 5000 {:registers [0 0 0 0 0 0 0 0]
-               :stack []
-               :pointer 0})
+    (run {:registers [0 0 0 0 0 0 0 0]
+          :stack []
+          :pointer 0})
     (catch Exception e
       (let [{:keys [pointer] :as state} (ex-data e)]
         (println (ex-message e))
-        (println (pr-str {:opcode (get program pointer)
-                          :range (subvec program (dec pointer) (+ pointer 5))
+        (println (pr-str {:opcode (get @program pointer)
+                          :range (subvec @program (dec pointer) (+ pointer 5))
                           :state state}))))))
 
 (-main)
