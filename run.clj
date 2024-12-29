@@ -163,9 +163,17 @@
     (when (= c \newline) (flush))
     state))
 
+(defn read-input
+  [{:keys [in] :as state}]
+  (cond-> state
+    (empty? in) (assoc :in (conj (vec (read-line)) \newline))))
+
 (defmethod instruction 20
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg in :in :as state} (read-input (add-arguments state 1))]
+    (-> state
+        (assoc-in [:registers a] (int (first in)))
+        (update :in rest))))
 
 (defmethod instruction 21
   [state]
