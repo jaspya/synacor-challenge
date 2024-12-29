@@ -24,13 +24,22 @@
 
 (def max-literal 32768)
 
-(defn get-arguments
-  [{:keys [registers pointer]} n]
-  (for [idx (range n)
-        :let [value (get program (+ (inc pointer) idx))]]
-    (if (>= value max-literal)
-      (get registers (- value max-literal))
-      value)))
+(defn add-arguments
+  [state n]
+  (reduce (fn [{:keys [registers pointer] :as state} _idx]
+            (let [raw-value (get program pointer)
+                  register? (>= raw-value max-literal)
+                  reg (when register? (- raw-value max-literal))
+                  argv (if register? (get registers reg) raw-value)]
+              (-> state
+                  (update :reg conj reg)
+                  (update :argv conj argv)
+                  (update :pointer inc))))
+          (-> state
+              (assoc :reg [])
+              (assoc :argv [])
+              (update :pointer inc))
+          (range n)))
 
 (defmulti instruction
   (fn [{:keys [pointer]}] (get program pointer)))
@@ -42,7 +51,8 @@
 
 (defmethod instruction 1
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b] :argv :as state} (add-arguments state 2)]
+    (assoc-in state [:registers a] b)))
 
 (defmethod instruction 2
   [state]
@@ -54,7 +64,8 @@
 
 (defmethod instruction 4
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (if (= b c) 1 0))))
 
 (defmethod instruction 5
   [state]
@@ -62,26 +73,25 @@
 
 (defmethod instruction 6
   [state]
-  (let [[a] (get-arguments state 1)]
-    (assoc state :pointer (int a))))
+  (let [{[a] :argv :as state} (add-arguments state 1)]
+    (assoc state :pointer a)))
 
 (defmethod instruction 7
-  [{:keys [pointer] :as state}]
-  (let [[a b] (get-arguments state 2)]
-    (if (zero? a)
-      (assoc state :pointer (+ pointer 3))
-      (assoc state :pointer (int b)))))
+  [state]
+  (let [{[a b] :argv :as state} (add-arguments state 2)]
+    (cond-> state
+      (not (zero? a)) (assoc :pointer b))))
 
 (defmethod instruction 8
-  [{:keys [pointer] :as state}]
-  (let [[a b] (get-arguments state 2)]
-    (if (zero? a)
-      (assoc state :pointer (int b))
-      (assoc state :pointer (+ pointer 3)))))
+  [state]
+  (let [{[a b] :argv :as state} (add-arguments state 2)]
+    (cond-> state
+      (zero? a) (assoc :pointer b))))
 
 (defmethod instruction 9
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg [_ b c] :argv :as state} (add-arguments state 3)]
+    (assoc-in state [:registers a] (mod (+ b c) 32768))))
 
 (defmethod instruction 10
   [state]
@@ -120,10 +130,10 @@
   (throw (ex-info "UnsupportedOperationException" state)))
 
 (defmethod instruction 19
-  [{:keys [pointer] :as state}]
-  (let [[a] (get-arguments state 1)]
+  [state]
+  (let [{[a] :argv :as state} (add-arguments state 1)]
     (print (char a))
-    (assoc state :pointer (+ pointer 2))))
+    state))
 
 (defmethod instruction 20
   [state]
@@ -143,8 +153,8 @@
 (defn -main
   []
   (try
-    (run 200 {:registers [0 0 0 0 0 0 0 0]
-              :pointer 0})
+    (run 5000 {:registers [0 0 0 0 0 0 0 0]
+               :pointer 0})
     (catch Exception e
       (let [{:keys [pointer] :as state} (ex-data e)]
         (println (ex-message e))
