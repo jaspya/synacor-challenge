@@ -56,11 +56,15 @@
 
 (defmethod instruction 2
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :argv :as state} (add-arguments state 1)]
+    (update state :stack conj a)))
 
 (defmethod instruction 3
   [state]
-  (throw (ex-info "UnsupportedOperationException" state)))
+  (let [{[a] :reg stack :stack :as state} (add-arguments state 1)]
+    (-> state
+        (assoc-in [:registers a] (peek stack))
+        (update :stack pop))))
 
 (defmethod instruction 4
   [state]
@@ -154,6 +158,7 @@
   []
   (try
     (run 5000 {:registers [0 0 0 0 0 0 0 0]
+               :stack []
                :pointer 0})
     (catch Exception e
       (let [{:keys [pointer] :as state} (ex-data e)]
