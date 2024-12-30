@@ -1,7 +1,9 @@
 #!/usr/bin/env bb
 
 (ns run
-  (:require [clojure.java.io :as io])
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str])
   (:import [java.io File]
            [java.nio ByteBuffer ByteOrder]))
 
@@ -164,9 +166,20 @@
     state))
 
 (defn read-input
-  [{:keys [in] :as state}]
-  (cond-> state
-    (empty? in) (assoc :in (conj (vec (read-line)) \newline))))
+  [{:keys [in save] :as state}]
+  (cond
+    (seq in)
+    state
+
+    (seq save)
+    (let [input (first save)]
+      (println input)
+      (-> state
+          (assoc :in (vec (str input "\n")))
+          (update :save subvec 1)))
+
+    :else
+    (assoc state :in (vec (str (str/trim (read-line)) "\n")))))
 
 (defmethod instruction 20
   [state]
@@ -187,9 +200,11 @@
 (defn -main
   []
   (try
-    (run {:registers [0 0 0 0 0 0 0 0]
-          :stack []
-          :pointer 0})
+    (let [save (edn/read-string (slurp "save.edn"))]
+      (run {:registers [0 0 0 0 0 0 0 0]
+            :stack []
+            :pointer 0
+            :save save}))
     (catch Exception e
       (let [{:keys [pointer] :as state} (ex-data e)]
         (println (ex-message e))
