@@ -11,4 +11,41 @@
  "west"
  "west"
  "passage"
- "ladder"]
+ "ladder"
+ "west"
+ "south"
+ "north"
+ "take can"
+ "use can"
+ "west"
+ "ladder"
+ "darkness"
+ "use lantern"
+ "continue"
+ "west"
+ "west"
+ "west"
+ "west"
+ "north"
+ "take red coin"
+ "north"
+ "west"
+ "take blue coin"
+ "up"
+ "take shiny coin"
+ "down"
+ "east"
+ "east"
+ "take concave coin"
+ "down"
+ "take corroded coin"
+ "up"
+ "west"
+ "use blue coin" ;; 9
+ "use red coin" ;; 2
+ "use shiny coin" ;; 5
+ "use concave coin" ;; 7
+ "use corroded coin" ;; 3
+ "north" ;; 9 + 2 * 5^2 + 7^3 - 3 = 399
+ "take teleporter"
+ "use teleporter"]
